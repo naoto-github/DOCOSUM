@@ -1,0 +1,303 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta http-equiv="Content-Security-Policy" content="default-src * data: gap: https://ssl.gstatic.com; style-src * 'unsafe-inline'; script-src * 'unsafe-inline' 'unsafe-eval'">
+  <script src="components/loader.js"></script>
+  <script src="lib/onsenui/js/onsenui.min.js"></script>
+
+  <link rel="stylesheet" href="components/loader.css">
+  <link rel="stylesheet" href="lib/onsenui/css/onsenui.css">
+  <!-- <link rel="stylesheet" href="lib/onsenui/css/onsen-css-components.css"> -->
+  <link rel="stylesheet" href="css/onsen-css-components.css">
+  <link rel="stylesheet" href="css/style.css">
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css?family=Fredoka+One" rel="stylesheet">
+  
+  <!-- Leeflet -->
+  <link href="js/leaflet/leaflet.css" rel="stylesheet">
+  <!-- <script src="js/leaflet/leaflet.js"></script> -->
+
+  <script src="data/data_0.geojson"></script>
+  <script src="data/data_1.geojson"></script>
+  <script src="data/data_2.geojson"></script>
+  <script src="data/data_3.geojson"></script>
+  <script src="data/data_4.geojson"></script>
+  <script src="data/data_5.geojson"></script>
+  <script src="data/data_6.geojson"></script>
+  <script src="data/data_7.geojson"></script>              
+
+  <script>
+
+    class Facility{
+        constructor(name){
+            this.name = name;
+            this.selected = false;
+        }
+    }                                                                                                                                             
+                
+    var data = [];
+    data[0] = data_0;
+    data[1] = data_1;
+    data[2] = data_2;                    
+    data[3] = data_3;                    
+    data[4] = data_4;                    
+    data[5] = data_5;                    
+    data[6] = data_6;                    
+    data[7] = data_7;  
+    
+    var facilities = [];
+    facilities[0] = new Facility("子育て施設");                                     
+    facilities[1] = new Facility("教育機関");                                    
+    facilities[2] = new Facility("高齢者福祉");                                     
+    facilities[3] = new Facility("バス停");                                     
+    facilities[4] = new Facility("障碍者福祉");                                     
+    facilities[5] = new Facility("医療施設");                                     
+    facilities[6] = new Facility("避難所");                                     
+    facilities[7] = new Facility("警察署");                                                                                             
+    
+    var counter = 0;
+  
+    ons.ready(function(){
+        
+
+        
+        var navigator = $("#navigator")[0];
+        
+        setTimeout(function(){
+            
+            $(document).on("click", "#start-button", function(){
+                navigator.pushPage("selection.html");
+            });
+                        
+            $(document).on("click", ".item", function(){       
+                var index = $(".item").index(this);
+                if(facilities[index].selected){
+                    facilities[index].selected = false;
+                    $(this).css("background-color", "blue");    
+                    counter--;                
+                }
+                else{
+                    if(counter < 8){
+                        facilities[index].selected = true;
+                        $(this).css("background-color", "red");                     
+                        counter++;      
+                    }              
+                }                
+            });
+            
+            $(document).on("click", "#next-button", function(){
+                if(counter >= 1){
+                    navigator.pushPage("map.html");
+                }
+                else{
+                    alert("施設を１つ以上選択してください");
+                }
+            });                       
+        
+            document.addEventListener("init", function(event){
+                var page = event.target;
+                if(page.id == "map-page"){
+                                                                                                                                                    
+                    $.getScript("js/leaflet/leaflet.js", function(){
+                    
+                        $(".page__background").css("background-color","rgba(0, 0, 0, 0)");
+                        var map = L.map('map').setView([35.132015, 137.039412], 15);
+                    
+                        L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', {
+                            attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
+                        }).addTo(map);                  
+                        
+                        var info = L.control({
+                            position: "topright"
+                        });
+                        
+                        info.onAdd = function(map){
+                            this._div = L.DomUtil.create("div");
+                            this._div.innerHTML = "<p class='info'>住みたい位置をタップしてください</p>"
+                            return this._div;
+                        };
+                                        
+                        info.onRemove = function(map){                            
+                        };
+                        
+                        info.update = function(text){
+                            this._div.innerHTML = "<div class='info'> <p>【最も近い施設】</p>" + text + "</div>";
+                        };
+                        
+                        info.addTo(map);
+                            
+                        var polylines = [];
+                        var marker;
+                                        
+                        map.on("click", function(e){                
+                            
+                            text = ""
+                                            
+                            for(var i=0; i<polylines.length; i++){
+                                polylines[i].remove();
+                            }
+                            polylines = []                                     
+                            targets = []
+                            
+                            for(var i=0; i<data.length; i++){
+                                if(facilities[i].selected){                                    
+                                    index = findNearestFacility(e.latlng, data[i])
+                                    
+                                    var target_latlng = L.GeoJSON.coordsToLatLng(data[i].features[index].geometry.coordinates);
+                                    distance = e.latlng.distanceTo(target_latlng)
+                                    targets.push(target_latlng);
+                                    
+                                    text += "<p>"+ facilities[i].name + ": " + data[i].features[index].properties.name + "</p>" + "<p>" + Math.floor(distance) + "m</p>";
+                                }
+                            }
+                            
+                            for(var i=0; i<targets.length; i++){
+                                polylines.push(L.polyline([e.latlng, targets[i]]))
+                            }
+                            
+                            for(var i=0; i<polylines.length; i++){
+                                polylines[i].addTo(map);
+                            }
+                            
+                            info.update(text);
+                            
+                            if(marker != null){
+                                marker.remove();
+                            }
+                            
+                            marker = L.marker(e.latlng);
+                            marker.addTo(map);
+                            
+                            map.setView(e.latlng);
+                    
+                        });
+                        
+                        var options = []
+                        
+                        options[0] = {
+                            radius: 8,
+                            fillColor: "#ffffff",
+                            color: "#000000",                            
+                            weight: 1,
+                            opacity: 1,
+                            fillOpacity: 0.8
+                        };
+
+                        options[1] = {
+                            radius: 8,
+                            fillColor: "#ff00ff",
+                            color: "#000000",                            
+                            weight: 1,
+                            opacity: 1,
+                            fillOpacity: 0.8
+                        };
+                        
+                        options[2] = {
+                            radius: 8,
+                            fillColor: "#ff0000",
+                            color: "#000000",                            
+                            weight: 1,
+                            opacity: 1,
+                            fillOpacity: 0.8
+                        };
+                        
+                        options[3] = {
+                            radius: 8,
+                            fillColor: "#ffff00",
+                            color: "#000000",                            
+                            weight: 1,
+                            opacity: 1,
+                            fillOpacity: 0.8
+                        };
+                        
+                        options[4] = {
+                            radius: 8,
+                            fillColor: "#00ff00",
+                            color: "#000000",                            
+                            weight: 1,
+                            opacity: 1,
+                            fillOpacity: 0.8
+                        };
+                        
+                        options[5] = {
+                            radius: 8,
+                            fillColor: "#00ffff",
+                            color: "#000000",                            
+                            weight: 1,
+                            opacity: 1,
+                            fillOpacity: 0.8
+                        };
+                        
+                        options[6] = {
+                            radius: 8,
+                            fillColor: "#0000ff",
+                            color: "#000000",                            
+                            weight: 1,
+                            opacity: 1,
+                            fillOpacity: 0.8
+                        };
+                        
+                        options[7] = {
+                            radius: 8,
+                            fillColor: "#000000",
+                            color: "#000000",
+                            weight: 1,
+                            opacity: 1,
+                            fillOpacity: 0.8
+                        };                                                                                                                                                                                             
+                        
+                        function findNearestFacility(latlng, data){
+                            
+                            min_distance = Number.MAX_VALUE;
+                            min_index = 0;
+                            
+                            for(var i=0; i<data.features.length; i++){
+                            
+                                var target_latlng = L.GeoJSON.coordsToLatLng(data.features[i].geometry.coordinates);
+                                distance = latlng.distanceTo(target_latlng)
+                                
+                                if(distance < min_distance){
+                                    min_distance = distance;
+                                    min_index = i;
+                                }
+                            }
+                            
+                            return min_index;
+                        }
+                        
+                        for(var i=0; i<data.length; i++){
+                            if(facilities[i].selected){
+                                for(var j=0; j<data[i].features.length; j++){
+                                    L.geoJSON(data[i].features[j], {
+                                        pointToLayer: function(feature, latlng){
+                                                return L.circleMarker(latlng, options[i]);
+                                        },
+                                        onEachFeature: function(feature, layer){   
+                                            text = "<h5>" + feature.properties.name + "</h5><p>【" + facilities[i].name + "】</p>";
+                                            layer.bindPopup(text);
+                                        }
+                                    }).addTo(map);
+                                }
+                            }
+                        }
+                    });
+                }
+            });
+            
+        }, 0);
+
+    });
+    
+
+  </script>
+
+</head>
+<body>
+    
+  <ons-navigator id="navigator" page="top.html"></ons-navigator>
+  
+</body>
+</html>

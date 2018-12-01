@@ -1,0 +1,46 @@
+
+.page__background {
+    background-image: url("../img/cover.jpg");
+    background-size: cover;
+}
+
+#title{
+    margin-top: 50px;
+}
+
+.apptitle{
+    font-family: 'Fredoka One', cursive !important;
+    font-size: 50px !important;
+}
+
+.selector{
+    display: flex;
+    justify-content: center;
+    justify-content: space-evenly;
+}
+
+.item{
+    background-color: blue;
+    width: 120px;
+    height: 80px;
+    margin: 10px;
+    text-align: center;
+    vertical-align: middle;
+}
+
+p{
+    margin: 5px;
+    padding: 0px;
+}
+
+#map{
+    height: 100%;
+    width: 100%;
+}
+
+.info{
+    color: white;
+    background-color: blue;
+    padding: 5px;
+    opacity: 0.5;
+}
